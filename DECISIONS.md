@@ -95,6 +95,20 @@ Status values: `proposed` → `accepted` | `rejected`, or later `superseded` by 
 
 ---
 
+### D10 — Milestone 3 first-playable-build scope and tech locks
+- **Date:** 2026-10-16
+- **Context:** Implementing [ROADMAP.md](ROADMAP.md) Milestone 3 (a working local prototype) required locking several TECH.md choices that were still Provisional, and cutting scope to the first 3 of 10 Fundamentals levels.
+- **Decision:**
+  - Tech locked for this build: **Node.js/TypeScript + Fastify** backend (`apps/api`), **React + Vite + hand-rolled Canvas 2D** frontend (`apps/web`), and **local Docker-based Java execution** (`apps/api/src/execution/dockerRunner.ts`, image at `infra/java-sandbox/Dockerfile`) — explicitly dev-only, not the production sandbox decision ([TECH.md](TECH.md) §9, still open).
+  - Scope cut to **[CURRICULUM.md](CURRICULUM.md) levels 1–3 only** (Wake-up, Name tag, Power math) — the only levels in the first 10 with no `robot.move()`-style world-interaction API, so the full loop (editor → compile → run → test → reward) could be proven without first designing that protocol.
+  - **No auth yet**: every user-scoped database row uses a single hardcoded `DEV_USER_ID` constant (`apps/api/src/devUser.ts`) instead of a `users` table — real accounts are Milestone 6.
+  - **Adaptation from CURRICULUM.md**: level 3's starter code reads `bridgeLength` via `Scanner`/stdin instead of a hardcoded literal, so the hidden test (a different bridge length) can run without patching the student's source — the standard online-judge pattern. Same learning objective (a formula, not a hardcoded answer), different input mechanism.
+- **Rationale:** Needed concrete, unblocking choices to move from documentation to a verified, playable loop; all are revisable and don't commit the production architecture.
+- **Consequences:** `TECH.md` §§1, 3, 5, 9 updated to reflect these as "Confirmed for local dev prototype." `docs/engineering/DEVELOPMENT_SETUP.md` now has real setup steps instead of a placeholder. Levels 4–10 and real auth remain unimplemented.
+- **Status:** accepted
+
+---
+
 ## Open questions (not yet decided)
 
 | ID | Question | Blocks | Owner |

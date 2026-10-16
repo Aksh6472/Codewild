@@ -1,0 +1,14 @@
+{
+  "name": "project-atlas",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "db:init": "npm run db:init --workspace=apps/api",
+    "test": "npm run test --workspaces --if-present"
+  }
+}

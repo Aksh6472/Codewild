@@ -2,7 +2,7 @@
 
 Status markers used throughout: **Confirmed** (decided, see [DECISIONS.md](DECISIONS.md)), **Provisional** (recommended, not yet locked), **TBD** (genuinely open).
 
-## 1. Frontend framework — React + TypeScript — Provisional
+## 1. Frontend framework — React + TypeScript — Confirmed for local dev prototype (DECISIONS.md D10)
 
 - **What it does:** Component-based UI framework with static typing.
 - **Why it fits:** Large ecosystem of game-adjacent canvas/DOM integration libraries; TypeScript catches a class of bugs that matter when the editor, world renderer, and WebSocket/HTTP layers all need to agree on shared types (e.g., test-result schemas in [API_SPEC.md](API_SPEC.md)).
@@ -19,7 +19,7 @@ Status markers used throughout: **Confirmed** (decided, see [DECISIONS.md](DECIS
 - **Trade-offs:** None significant for this use case.
 - **Cost:** None.
 
-## 3. Game rendering — HTML5 Canvas (2D), via a lightweight rendering library — Provisional
+## 3. Game rendering — HTML5 Canvas (2D), via a lightweight rendering library — Confirmed for local dev prototype (hand-rolled; DECISIONS.md D10)
 
 - **What it does:** Renders the grid-based world view (robot, crystals, obstacles) described in `design.md` §6.1 ("top-down or ¾ grid stages").
 - **Why it fits:** The visual direction is explicitly 2D, grid-based, flat/illustrated — not a 3D engine's problem. A full game engine (Unity/Godot/Phaser) is more than this needs.
@@ -38,10 +38,11 @@ Status markers used throughout: **Confirmed** (decided, see [DECISIONS.md](DECIS
 - **Trade-offs:** CodeMirror 6 requires writing a Java language-mode config (official `@codemirror/lang-java` package exists and covers syntax highlighting; no production-grade Java *language server* in-browser — that's fine, since correctness checking happens server-side via actual compilation, not client-side linting).
 - **Cost:** Free, open-source (MIT).
 
-## 5. Backend API — Node.js (TypeScript) with a conventional framework (e.g., Fastify or Express) — Provisional
+## 5. Backend API — Node.js (TypeScript) with Fastify — Confirmed for local dev prototype (DECISIONS.md D10)
 
 - **What it does:** Serves the API in [API_SPEC.md](API_SPEC.md): auth, level/challenge retrieval, submission orchestration, progress tracking.
 - **Why it fits:** One language (TypeScript) across frontend and backend reduces context-switching for a small team; strong ecosystem for talking to Postgres, queues, and HTTP-based execution services.
+- **Implemented as of Milestone 3:** `apps/api` uses Fastify directly (no Express) with `pg` (no ORM) — see `apps/api/src/`.
 - **Alternatives considered:** A JVM backend (Spring Boot) — tempting since the product teaches Java, but doesn't make the backend itself better suited to the job, and splits the team across two languages for no product benefit. Python (FastAPI) — equally viable, slightly weaker type-sharing story with a TS frontend.
 - **Trade-offs:** Node is not the right place to *run* Java code (see §9) — it only orchestrates calls to the execution service.
 - **Cost:** None beyond hosting.
@@ -70,7 +71,9 @@ Status markers used throughout: **Confirmed** (decided, see [DECISIONS.md](DECIS
 - **Trade-offs/cost:** Per-call cost scales with active users; must be capped (e.g., hint calls per user per day) — see [PRD.md](PRD.md) risk table. Use a model from Anthropic's Claude family (see the `claude-api` reference skill for current model IDs/pricing when this is implemented) given the context-injection need (code + test result + level concept) and the requirement that **the AI never decides correctness** — it only explains a result the test runner already produced ([DECISIONS.md#d3](DECISIONS.md) reinforcement; full rule in [TESTING.md](TESTING.md)).
 - **Security:** Prompt-injection risk — a student could put adversarial text inside code comments/strings aimed at the hint model. See [SECURITY.md](SECURITY.md) §AI prompt injection risks: the hint prompt must treat submitted code as untrusted data, not instructions, and the hint response must never be allowed to claim a test passed when it didn't (the UI gets pass/fail only from the test runner's result, never from the hint model's text).
 
-## 9. Java code execution — the highest-stakes technical decision — Provisional, comparison below (see [DECISIONS.md#d8](DECISIONS.md), [SECURITY.md](SECURITY.md))
+## 9. Java code execution — the highest-stakes technical decision — Production choice still TBD; dev-only path Confirmed for Milestone 3 (see [DECISIONS.md#d8](DECISIONS.md), [DECISIONS.md D10](DECISIONS.md), [SECURITY.md](SECURITY.md))
+
+**Milestone 3 dev-only implementation (not the production decision below):** `apps/api/src/execution/dockerRunner.ts` runs each submission in two short-lived local Docker containers (`infra/java-sandbox/Dockerfile`, a plain `eclipse-temurin:21-jdk-jammy` image) — one for `javac`, one for `java` — with `--network none`, `--memory=256m`, `--cpus=0.5`, `--pids-limit=64`, `--read-only` root filesystem, and a `timeout 5s` wall-clock limit on each phase. This is explicitly **not** the hardened Option A/B decision below — see `SECURITY.md` and the dockerRunner.ts header comment for why it must never be exposed to the public internet. The managed-vs-self-hosted choice for real users is still fully open.
 
 **Non-negotiable constraint:** untrusted student Java code never compiles or runs inside the main API process. It always goes to an isolated execution service reachable only server-to-server.
 
@@ -111,14 +114,14 @@ Status markers used throughout: **Confirmed** (decided, see [DECISIONS.md](DECIS
 
 | Choice | Status |
 |---|---|
-| React + TypeScript | Provisional |
-| Vite | Provisional |
-| Canvas-based 2D rendering (hand-rolled → PixiJS if needed) | Provisional |
+| React + TypeScript | Confirmed for local dev prototype |
+| Vite | Confirmed for local dev prototype |
+| Canvas-based 2D rendering (hand-rolled → PixiJS if needed) | Confirmed for local dev prototype (hand-rolled) |
 | CodeMirror 6 | Confirmed direction |
-| Node.js/TypeScript backend | Provisional |
+| Node.js/TypeScript + Fastify backend | Confirmed for local dev prototype |
 | PostgreSQL | Confirmed |
 | Google OAuth + email fallback; provider (in-house vs. managed) | Partially confirmed / TBD |
 | AI hints provider | TBD |
-| Java execution: managed vs. self-hosted sandbox | TBD — spike required |
+| Java execution: managed vs. self-hosted sandbox (production) | TBD — spike required; dev-only local Docker path confirmed for Milestone 3 |
 | Hosting/deployment provider | TBD |
 | Logging/monitoring stack | TBD |

@@ -42,12 +42,12 @@ Full topic breakdown in [CURRICULUM.md](CURRICULUM.md).
 | Product/design documentation | In progress (this repository) |
 | User validation (15–20 student interviews) | Not started — plan defined in [VALIDATION.md](VALIDATION.md) |
 | UX prototype | Not started |
-| Playable Java Fundamentals prototype | Not started |
-| Secure Java code execution | Not started — approach not finalized, see [TECH.md](TECH.md) §Code Execution |
-| Accounts & progress persistence | Not started |
-| AI hints | Not started |
+| Playable Java Fundamentals prototype (levels 1–3 of 10) | **Working, local dev only** — see [docs/engineering/DEVELOPMENT_SETUP.md](docs/engineering/DEVELOPMENT_SETUP.md) and [DECISIONS.md D10](DECISIONS.md). No auth, no hardened sandbox, levels 4–10 not built. |
+| Secure Java code execution (production-grade) | Not started — a dev-only local Docker execution path exists for levels 1–3 (not hardened, not internet-facing), see [SECURITY.md](SECURITY.md) and [TECH.md](TECH.md) §9 |
+| Accounts & progress persistence | Not started (progress persists per-session to a single hardcoded dev user, not real accounts) |
+| AI hints | Not started (deterministic rung-0 error messages are implemented; AI rungs 1–4 are not) |
 
-**Nothing below "Product/design documentation" has been built.** Treat every feature described in this README and in linked docs as a plan, not a claim about current functionality.
+Everything above "Playable Java Fundamentals prototype" is still a plan, not a claim about current functionality — and even the prototype row is explicitly scoped to 3 of the 10 Fundamentals levels, running locally only.
 
 ## Repository structure
 
