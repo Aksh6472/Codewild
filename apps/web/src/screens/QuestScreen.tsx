@@ -12,10 +12,9 @@ type Level = LevelDetail & { challengeId: string };
 // design.md §3.4: world + editor side by side, Run locks the editor and plays
 // back the result; §2: visible tests tick live, hidden-test failures surface
 // as a "twist", never a raw list.
-export function QuestScreen(props: { levelId: string; onBackToMap: () => void; onNextLevel: (levelId: string) => void }) {
+export function QuestScreen(props: { levelId: string; onBack: () => void; onNextLevel: () => void }) {
   const [level, setLevel] = useState<Level | null>(null);
   const [code, setCode] = useState("");
-  const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [result, setResult] = useState<SubmissionResultResponse | null>(null);
   const [reward, setReward] = useState<RewardResponse | null>(null);
   const [running, setRunning] = useState(false);
@@ -25,7 +24,6 @@ export function QuestScreen(props: { levelId: string; onBackToMap: () => void; o
     setLevel(null);
     setResult(null);
     setReward(null);
-    setSubmissionId(null);
     api
       .getLevel(props.levelId)
       .then((lv) => {
@@ -42,7 +40,6 @@ export function QuestScreen(props: { levelId: string; onBackToMap: () => void; o
     setReward(null);
     try {
       const { submissionId: id } = await api.submit(level.challengeId, code);
-      setSubmissionId(id);
       await pollUntilResolved(id);
     } catch (err) {
       setError(String(err));
@@ -68,8 +65,13 @@ export function QuestScreen(props: { levelId: string; onBackToMap: () => void; o
     setRunning(false);
   }
 
-  if (error) return <p role="alert">{error}</p>;
-  if (!level) return <p>Loading level...</p>;
+  if (error)
+    return (
+      <p className="status" role="alert">
+        {error}
+      </p>
+    );
+  if (!level) return <p className="status">Loading level...</p>;
 
   const worldState: WorldState = running
     ? "running"
@@ -80,31 +82,65 @@ export function QuestScreen(props: { levelId: string; onBackToMap: () => void; o
         : "idle";
 
   return (
-    <div>
-      <button onClick={props.onBackToMap}>◄ Map</button>
-      <h1>{level.title}</h1>
-      <p>{level.story}</p>
-      <div style={{ display: "flex", gap: 16 }}>
+    <div className="quest">
+      <header className="quest-bar card">
+        <button className="btn-ghost" onClick={props.onBack}>
+          <span aria-hidden="true">◄</span> Quests
+        </button>
         <div>
+          <h1>{level.title}</h1>
+          <small className="muted">Java Fundamentals</small>
+        </div>
+        <span className="spacer" />
+        <span className="pill">
+          <span className="star" aria-hidden="true">✦</span> XP +50
+        </span>
+        <span className="pill">
+          <span className="coin" aria-hidden="true" /> Coins +20
+        </span>
+      </header>
+
+      <div className="quest-grid">
+        <section className="card panel" aria-label="Instructions and world">
+          <div>
+            <h2>Instructions</h2>
+            <p className="muted">{level.story}</p>
+            <p>{level.instructions}</p>
+          </div>
+          <div>
+            <div className="section-label">Requirements</div>
+            <GoalChecklist items={level.goalChecklist} results={result?.visibleResults ?? []} />
+          </div>
           <WorldView concept={level.concept} state={worldState} stdout={result?.visibleStdout ?? ""} />
-          <GoalChecklist items={level.goalChecklist} results={result?.visibleResults ?? []} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <p>{level.instructions}</p>
+        </section>
+
+        <section className="card editor-card" aria-label="Code editor">
+          <div className="editor-tabs">
+            <span className="file-tab">{/public\s+class\s+(\w+)/.exec(code)?.[1] ?? "Main"}.java</span>
+            <button className="btn-primary btn-run" onClick={handleRun} disabled={running}>
+              {running ? "Running..." : "Run ▶"}
+            </button>
+          </div>
           <CodeEditor value={code} onChange={setCode} readOnly={running} />
-          <button onClick={handleRun} disabled={running}>
-            {running ? "Running..." : "Run ▶"}
-          </button>
-          <Console rung0Message={result?.rung0Message ?? null} hiddenTwist={result?.hiddenTwist ?? null} />
-          {reward && (
-            <RewardRecap
-              reward={reward}
-              onNext={() => props.onNextLevel(level.id)}
-              onBackToMap={props.onBackToMap}
-            />
+          {result && (
+            <div className="output" aria-live="polite">
+              {result.status === "passed" ? (
+                <div className="verdict pass">
+                  <span aria-hidden="true">✓</span> Correct!
+                </div>
+              ) : (
+                <div className="verdict fail">
+                  <span aria-hidden="true">✗</span> Not quite yet
+                </div>
+              )}
+              {result.visibleStdout && <pre className="stdout">{result.visibleStdout}</pre>}
+              <Console rung0Message={result.rung0Message} hiddenTwist={result.hiddenTwist} />
+            </div>
           )}
-        </div>
+        </section>
       </div>
+
+      {reward && <RewardRecap reward={reward} onNext={props.onNextLevel} onBack={props.onBack} />}
     </div>
   );
 }

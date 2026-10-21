@@ -18,14 +18,14 @@ export function WorldView(props: { concept: string; state: WorldState; stdout: s
     if (!ctx) return;
 
     const { width, height } = canvas;
-    ctx.fillStyle = "#14161C"; // --bg (dark theme token, design.md §6.2)
+    ctx.fillStyle = "#0B1020"; // --editor-bg (styles.css)
     ctx.fillRect(0, 0, width, height);
 
     drawRobot(ctx, width / 2 - 24, height - 100);
     drawOverlay(ctx, props, width, height);
   }, [props.concept, props.state, props.stdout]);
 
-  return <canvas ref={canvasRef} width={480} height={320} style={{ border: "1px solid #2A2D37", borderRadius: 8 }} />;
+  return <canvas ref={canvasRef} width={480} height={320} className="world-canvas" />;
 }
 
 function drawRobot(ctx: CanvasRenderingContext2D, x: number, y: number) {

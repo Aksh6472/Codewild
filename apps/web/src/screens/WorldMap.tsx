@@ -1,47 +1,57 @@
-import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import type { WorldSummary } from "@atlas/shared-types";
-import { api } from "../api/client.js";
+import { Island } from "../components/Art.js";
 
-// design.md §3.3: node states locked/available/in_progress/mastered.
-export function WorldMap(props: { onSelectLevel: (levelId: string) => void }) {
-  const [worlds, setWorlds] = useState<WorldSummary[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+// The Java path's later realms (CURRICULUM.md Worlds 2-3, DECISIONS.md D1) are
+// shown as locked teasers only — they have no levels or data yet.
+const UPCOMING_REALMS = [
+  { name: "Object-Oriented Programming", variant: "fortress" as const },
+  { name: "Data Structures & Algorithms", variant: "spires" as const },
+];
 
-  useEffect(() => {
-    api
-      .getLearningPaths()
-      .then((paths) => api.getWorlds(paths[0].id))
-      .then(setWorlds)
-      .catch((err) => setError(String(err)));
-  }, []);
-
-  if (error) return <p role="alert">Couldn't load the map: {error}</p>;
-  if (!worlds) return <p>Loading map...</p>;
-
-  const stateIcon: Record<string, string> = { locked: "🔒", available: "○", in_progress: "◐", mastered: "★" };
-
+// design.md §3.3: illustrated map; realm → level list lives in RealmScreen.
+export function WorldMap(props: { worlds: WorldSummary[]; hud: ReactNode; onSelectWorld: (worldId: string) => void }) {
   return (
-    <div>
-      <h1>Project Atlas — The Silent Foundry</h1>
-      {worlds.map((world) => (
-        <div key={world.id}>
-          <h2>{world.name}</h2>
-          <ul>
-            {world.levels.map((level) => (
-              <li key={level.id}>
-                <button
-                  disabled={level.state === "locked"}
-                  onClick={() => props.onSelectLevel(level.id)}
-                  aria-label={`${level.title} — ${level.state}`}
-                >
-                  {stateIcon[level.state]} {level.title}
-                  {level.syllabusTag ? ` (${level.syllabusTag})` : ""}
-                </button>
-              </li>
-            ))}
-          </ul>
+    <div className="map-page">
+      <div className="stars" />
+      <header className="page-header">
+        <div>
+          <h1 className="display">World Map</h1>
+          <p className="muted">Your coding journey across the realms</p>
         </div>
-      ))}
+        {props.hud}
+      </header>
+
+      <div className="realms">
+        {props.worlds.map((world, i) => {
+          const done = world.levels.filter((l) => l.state === "mastered").length;
+          return (
+            <button key={world.id} className="realm" onClick={() => props.onSelectWorld(world.id)}>
+              <Island variant="village" locked={false} />
+              <span className="realm-label">
+                <span className="realm-num">{i + 1}</span>
+                <span>
+                  <strong>Java Fundamentals</strong>
+                  <small>
+                    {world.name} · {done}/{world.levels.length} levels
+                  </small>
+                </span>
+              </span>
+            </button>
+          );
+        })}
+        {UPCOMING_REALMS.map((realm) => (
+          <button key={realm.name} className="realm" disabled aria-label={`${realm.name} — locked`}>
+            <Island variant={realm.variant} locked />
+            <span className="realm-label">
+              <span>
+                <strong>{realm.name}</strong>
+                <small>🔒 Locked</small>
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

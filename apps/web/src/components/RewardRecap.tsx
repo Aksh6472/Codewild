@@ -1,18 +1,27 @@
 import type { RewardResponse } from "@atlas/shared-types";
+import { Robot } from "./Art.js";
 
 // design.md §3.6: "What you just learned" card is mandatory; "Next quest" and
-// "Back to map" are always equal-weight, neither ever hidden/greyed.
-export function RewardRecap(props: { reward: RewardResponse; onNext: () => void; onBackToMap: () => void }) {
+// "Back to quests" are always equal-weight, neither ever hidden/greyed.
+export function RewardRecap(props: { reward: RewardResponse; onNext: () => void; onBack: () => void }) {
   return (
-    <div style={{ background: "#1E222B", color: "#E8E6E1", padding: 16, borderRadius: 8, marginTop: 12 }}>
-      <p>
-        +{props.reward.xpGained} XP · +{props.reward.coinsGained} coins
-      </p>
-      <p style={{ fontStyle: "italic" }}>{props.reward.whatYouLearned.sentence}</p>
-      <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={props.onNext}>Next quest</button>
-        <button onClick={props.onBackToMap}>Back to map</button>
+    <section className="card reward-card" aria-label="Level complete">
+      <div className="companion">
+        <Robot size={90} happy />
+        <div className="speech">
+          Level complete! +{props.reward.xpGained} XP · +{props.reward.coinsGained} coins
+          <br />
+          <em>{props.reward.whatYouLearned.sentence}</em>
+        </div>
       </div>
-    </div>
+      <div className="reward-actions">
+        <button className="btn-ghost" onClick={props.onBack}>
+          Back to quests
+        </button>
+        <button className="btn-primary" onClick={props.onNext}>
+          Next Level <span aria-hidden="true">→</span>
+        </button>
+      </div>
+    </section>
   );
 }
