@@ -112,7 +112,7 @@ World: **"The Silent Foundry"** (story and world concept from `design.md` §4 �
 
 ### Level 1 — Wake-up (`print` / output)
 - **Story:** The foundry's first robot has powered on but has never spoken. Your first line of code gives it a voice.
-- **Instructions:** "Make the robot say hello to the foundry."
+- **Instructions:** "Make the robot say hello to the foundry. It must print exactly: Hello, Foundry!" (the exact text must be stated, since the visible test is an exact stdout match)
 - **Starter code:**
   ```java
   public class Robot {

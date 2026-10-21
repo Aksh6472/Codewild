@@ -62,7 +62,7 @@ export async function seed() {
       syllabusTag: "Unit 1: Program Structure",
       sequenceOrder: 1,
       prerequisiteLevelId: null,
-      instructions: "Make the robot say hello to the foundry.",
+      instructions: "Make the robot say hello to the foundry. It must print exactly: Hello, Foundry!",
       starterCode: [
         "public class Robot {",
         "    public static void main(String[] args) {",
@@ -75,7 +75,7 @@ export async function seed() {
       testCases: [
         {
           isHidden: false,
-          description: "Robot says hello to the foundry",
+          description: "Robot prints exactly: Hello, Foundry!",
           input: null,
           expected: { stdout: "Hello, Foundry!" },
         },

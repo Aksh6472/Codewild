@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { pool } from "../db/pool.js";
 import { DEV_USER_ID } from "../devUser.js";
 import { evaluateSubmission, type TestCaseSpec } from "../execution/evaluateSubmission.js";
-import { rung0Message } from "../hints/rung0.js";
+import { rung0Message, WRONG_OUTPUT_MESSAGE } from "../hints/rung0.js";
 import { calculateReward, masteredState } from "../reward/reward.js";
 
 // API_SPEC.md: POST /submissions returns immediately with a pending status;
@@ -69,9 +69,11 @@ export async function submissionsRoutes(app: FastifyInstance) {
       : null;
 
     const firstFailure = resultRows.find((r) => !r.passed);
-    const message = firstFailure
-      ? rung0Message(firstFailure.error_classification, firstFailure.actual_output?.stderr ?? "")
-      : null;
+    const message = !firstFailure
+      ? null
+      : firstFailure.error_classification === "none"
+        ? (firstFailure.is_hidden ? null : WRONG_OUTPUT_MESSAGE) // hidden misses are explained by hiddenTwist
+        : rung0Message(firstFailure.error_classification, firstFailure.actual_output?.stderr ?? "");
 
     return {
       status: submission.status,

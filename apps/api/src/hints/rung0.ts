@@ -24,6 +24,11 @@ const PATTERNS: { test: (line: string) => boolean; message: string }[] = [
   },
 ];
 
+// For a run that compiled and finished cleanly but printed the wrong thing.
+// Never reveals the expected output (API_SPEC.md: no expected outputs in responses).
+export const WRONG_OUTPUT_MESSAGE =
+  "Your program ran, but its output doesn't match the goal yet. Compare it with the instructions character by character — capital letters, punctuation and spaces all count.";
+
 export function rung0Message(classification: ErrorClassification, stderr: string): string | null {
   if (classification === "timeout") {
     return "Your program never finished — check whether a loop is missing something that makes it stop.";
