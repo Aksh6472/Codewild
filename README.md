@@ -1,6 +1,5 @@
 # Project Atlas
-
-> Internal codename. Brand name undecided — see [DECISIONS.md#d5](DECISIONS.md). Working titles under consideration include "CodeQuest" (used in the pre-existing [design.md](design.md) draft) and "Bytebound."
+Internal codename. Brand name undecided — see [DECISIONS.md#d5](DECISIONS.md). Working titles under consideration include "CodeQuest" (used in the pre-existing [design.md](design.md) draft) and "Bytebound."
 
 **Status: pre-implementation.** This repository currently contains product, design, and engineering documentation only. No application code has been written yet. See [ROADMAP.md](ROADMAP.md) for what's actually being built and when.
 
@@ -16,7 +15,7 @@ Most beginner coding platforms are one of two things: a course with gamification
 
 Beginner programmers, with a primary focus on Indian engineering students taking a first-year or early programming course. See [docs/product/USER_PERSONAS.md](docs/product/USER_PERSONAS.md).
 
-## Core features (planned)
+Core features (planned)
 
 - A world that visibly reacts to the player's code (not a text-adventure wrapper around a quiz).
 - A real code editor beside the world view, with step-by-step execution and line highlighting tied to what's happening in the game.
