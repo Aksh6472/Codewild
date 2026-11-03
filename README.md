@@ -1,4 +1,4 @@
-# Project Atlas
+# Project 
 Internal codename. Brand name undecided — see [DECISIONS.md#d5](DECISIONS.md). Working titles under consideration include "CodeQuest" (used in the pre-existing [design.md](design.md) draft) and "Bytebound."
 
 **Status: pre-implementation.** This repository currently contains product, design, and engineering documentation only. No application code has been written yet. See [ROADMAP.md](ROADMAP.md) for what's actually being built and when.
