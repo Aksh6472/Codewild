@@ -109,6 +109,28 @@ Status values: `proposed` → `accepted` | `rejected`, or later `superseded` by 
 
 ---
 
+### D11 — Full Java path authored game-first, ahead of the roadmap order
+- **Date:** 2026-11-04
+- **Context:** The founder asked for a complete learning platform spanning Java fundamentals → OOP → data structures → algorithms → interview preparation, with lessons, knowledge checks, guided practice, coding challenges with tests, summaries, a final quiz per level with a passing score and review-gated retries, points, a progress dashboard and a course map. As written that's a lesson/quiz course — the option [D3](#d3--game-first-not-a-course-with-gamification-bolted-on) rejects — and it spans [ROADMAP.md](ROADMAP.md) milestones 5, 10 and 11 plus interview prep, which wasn't on the roadmap.
+- **Options considered:** (a) build the course-style platform and supersede D3; (b) a separate standalone course site next to Atlas; (c) keep to Milestone 3 scope; (d) build the full path **game-first** inside the existing app.
+- **Decision:** (d), chosen by the founder. The spec's 7 "levels" are **realms** on the world map, and each realm is one prerequisite chain of quests:
+  - 📜 **Lore** (lessons): prose, line-annotated runnable examples, inline knowledge checks, a summary of key ideas and common mistakes.
+  - ⚔️ **Trials** (coding challenges): visible + hidden stdin/stdout tests, optional static code requirements, authored mistake-specific feedback, and a hint ladder whose availability fades from *guided* → *supported* → *independent*.
+  - 🛡️ **Guardian quiz** at the end of every realm: server-graded, a stated pass mark (75%; 80% for the final one), and every missed question names its lesson. A retry opens only after those lessons have been re-completed.
+  - 🎙️ **Mock interviews and timed drills** in later realms: staged Clarify / Plan / Code / Test / Complexity, needing a passing discussion score *and* passing code. Timers are informational and never fail a quest.
+  - Points are granted **once per reward key** (lesson, first-try check, trial, quiz pass, quiz improvement, topic review), so replays can't farm them; advancing always requires completing the work itself.
+  - Single language: Java, in every realm ([D1](#d1--java-is-the-first-programming-language)).
+- **Rationale:** Meets the founder's learning requirements while keeping D3's thesis — the map, realms, robot companion, hidden-test "twists" and rewards stay one system. Authoring every realm now lets validation interviews ([VALIDATION.md](VALIDATION.md)) test the whole progression rather than three levels.
+- **Consequences:**
+  - Curriculum content now lives as typed source in `apps/api/src/content/` (synced to Postgres by `db/seed.ts`), validated against the real sandbox by `apps/api/test/curriculum.integration.test.ts`.
+  - Hint rungs 1–3 are **authored**, not AI-generated, and rung 4 is the authored solution walkthrough. Milestone 7 can still replace rungs 1–3 with AI.
+  - A pass after revealing the solution is stored as `assisted`: it unlocks the next quest but earns no ★ and half coins.
+  - Outside the Foundry, trials show the console rather than a bespoke animated world — the main gap against D3's "code changes the world" ideal, and a candidate for Milestone 5 polish.
+  - The milestone 4 sandbox requirement and Milestone 6 accounts are unchanged: everything is still dev-only, single local user.
+- **Status:** accepted
+
+---
+
 ## Open questions (not yet decided)
 
 | ID | Question | Blocks | Owner |

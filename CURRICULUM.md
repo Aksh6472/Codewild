@@ -1,5 +1,7 @@
 # Curriculum — Project Atlas
 
+> **Implemented content:** the playable curriculum for all seven realms — lesson text, examples, knowledge checks, trials with tests and hints, and quizzes — is authored in [`apps/api/src/content/`](apps/api/src/content/) (one file per realm) and is the source of truth for level content ([DECISIONS.md D11](DECISIONS.md)). It follows the topic order below. The World 1 level designs in this file remain the original design rationale; the content files adapt them to stdin/stdout tests (e.g. the gate reads its sensor value as input).
+
 This is an **initial curriculum proposal**, not a final syllabus. World/topic order follows [DECISIONS.md#d2](DECISIONS.md). The world narrative, screens, and mechanics referenced below are defined in [GAME_DESIGN.md](GAME_DESIGN.md) and `design.md`.
 
 ## World 1 — Java Fundamentals (MVP scope — the only world with full detail below)
@@ -14,7 +16,7 @@ Topics (prerequisite order, not yet broken into levels): classes and objects →
 
 Topics (prerequisite order): complexity analysis → arrays and strings → searching and sorting → linked lists → stacks and queues → recursion → hashing → trees and BSTs → heaps → graphs → BFS/DFS → greedy algorithms → dynamic programming. Requires World 2 complete (needs classes for nodes/trees/graphs).
 
-Per the founder brief, **World 2 and World 3 detailed level design is deferred** — do not create full level content for them until World 1 is validated (see [ROADMAP.md](ROADMAP.md) milestones 10–11).
+Per the original founder brief, World 2 and World 3 detailed design was deferred until World 1 was validated. The founder later asked for the full path to be built ([DECISIONS.md D11](DECISIONS.md)), so prototype content for OOP (realm 4), data structures (realm 5), algorithms (realm 6) and interview preparation (realm 7) now exists in `apps/api/src/content/`. It still needs validation with real students before [ROADMAP.md](ROADMAP.md) milestones 10–11 treat it as final.
 
 ## Topic specification template (applies to every topic, every world)
 

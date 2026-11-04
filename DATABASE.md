@@ -22,6 +22,8 @@ Proposed relational schema. Nothing here is implemented yet — see [README.md](
 | `hint_usage` | Yes (needed for mastery/★ rules and rate limiting) |
 | `quests` (side quests) | No — defer schema until side-quest design is finalized ([CURRICULUM.md](CURRICULUM.md)) |
 
+> **Implemented subset:** the local prototype's schema is `apps/api/src/db/schema.sql`. It adds `questions`, `question_attempts`, `lesson_completions`, `quiz_attempts` and `hint_usage` tables, `kind`/`content`/`passing_score` on `levels`, hint/solution/requirement columns on `challenges`, an `assisted` progress state, and a unique `reward_key` on `reward_transactions` so each reward is granted once ([DECISIONS.md D11](DECISIONS.md)). `users` is still not implemented ([D10](DECISIONS.md)).
+
 ## Schema
 
 ```sql

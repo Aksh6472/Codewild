@@ -20,6 +20,8 @@ No dates are committed below — milestones are ordered by dependency, not by ca
 - **Acceptance criteria:** Journey J1 (`design.md` §5) works for an internal tester end to end.
 - **Risks:** Being tempted to expose this pre-hardened path to real users — explicitly blocked by milestone 4.
 
+> **Scope note ([DECISIONS.md D11](DECISIONS.md)):** at the founder's request, Milestone 3's prototype was extended to the **whole Java path** — 7 realms, 67 quests: lessons, trials, guardian quizzes, timed drills and mock interviews — still dev-only on the local sandbox. Milestones 5, 10 and 11 therefore start from authored, test-validated content. What they still own: art-direction polish, world-interaction mechanics beyond the Foundry, step-mode, and the hardened execution path from Milestone 4.
+
 ## Milestone 4 — Secure Java execution integration
 - **Deliverables:** Resolution of [TECH.md](TECH.md) §9's managed-vs-self-hosted spike; production-grade sandboxed execution service meeting every item in [SECURITY.md](SECURITY.md)'s "mandatory before accepting submissions from real users" list.
 - **Dependencies:** Milestone 3 (need a real integration point to harden).

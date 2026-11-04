@@ -24,7 +24,7 @@ See `design.md` §3.2 (HUD), §3.6 (reward/recap screen), and §7 (the world/edi
 
 ## Unlock conditions
 
-A node unlocks when its prerequisite node(s) are passed (all visible + hidden tests green). ★ "mastered" status requires passing without using hint rung 4 (`design.md` §3.3, §3.5). Full prerequisite graph is defined per-topic in [CURRICULUM.md](CURRICULUM.md).
+A node unlocks when its prerequisite node(s) are passed (all visible + hidden tests green). ★ "mastered" status requires passing without using hint rung 4 (`design.md` §3.3, §3.5); a pass after rung 4 is stored as `assisted`, which still unlocks the next node. A realm's guardian quiz also requires every quest in that realm done, and a failed quiz re-opens only after the lessons behind its missed questions are re-completed ([DECISIONS.md D11](DECISIONS.md)). Full prerequisite graph is defined per-topic in [CURRICULUM.md](CURRICULUM.md).
 
 ## Boss battles
 
@@ -32,7 +32,7 @@ Boss levels combine multiple previously-taught concepts in one multi-step challe
 
 ## Hint progression
 
-See `design.md` §3.5 for the full 5-rung ladder (0: deterministic plain-English error, 1: nudge, 2: focus, 3: worked example, 4: solution walkthrough) including which rungs are AI-generated vs. authored, and the rule that **the AI never decides correctness** — only the test runner does (reinforced in [TESTING.md](TESTING.md) and [SECURITY.md](SECURITY.md)).
+See `design.md` §3.5 for the full 5-rung ladder (0: deterministic plain-English error, 1: nudge, 2: focus, 3: worked example, 4: solution walkthrough) including which rungs are AI-generated vs. authored (in the current prototype rungs 1–3 are authored per trial and unlock by attempt count according to the trial's guidance level — see `apps/api/src/hints/ladder.ts` and [DECISIONS.md D11](DECISIONS.md)), and the rule that **the AI never decides correctness** — only the test runner does (reinforced in [TESTING.md](TESTING.md) and [SECURITY.md](SECURITY.md)).
 
 ## Failure and retry mechanics
 
