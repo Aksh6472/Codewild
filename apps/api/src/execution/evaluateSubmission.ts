@@ -69,7 +69,7 @@ export async function evaluateSubmission(code: string, testCases: TestCaseSpec[]
     let firstErrorStderr = "";
 
     for (const tc of testCases) {
-      const run = await runInSandbox(compile.workDir, tc.input?.stdin ?? null);
+      const run = await runInSandbox(compile, tc.input?.stdin ?? null);
       const classification = classify({
         compileExitCode: 0,
         compileStderr: "",

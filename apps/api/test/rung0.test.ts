@@ -16,6 +16,12 @@ describe("rung0Message", () => {
     expect(rung0Message("timeout", "")).toMatch(/never finished/i);
   });
 
+  it("explains common runtime exceptions in plain English", () => {
+    const stderr = 'Exception in thread "main" java.lang.ArrayIndexOutOfBoundsException: Index 3 out of bounds for length 3';
+    expect(rung0Message("runtime_exception", stderr)).toMatch(/length - 1/);
+    expect(rung0Message("runtime_exception", "java.lang.StackOverflowError")).toMatch(/base case/);
+  });
+
   it("returns null when there was no error", () => {
     expect(rung0Message("none", "")).toBeNull();
   });
