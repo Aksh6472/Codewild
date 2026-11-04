@@ -39,7 +39,7 @@ docker build -t atlas-java-sandbox infra/java-sandbox
 npm run db:init --workspace=apps/api
 ```
 
-Applies `apps/api/src/db/schema.sql` and seeds languages/learning_paths/worlds/levels 1–3 with their starter code and test cases, per [CURRICULUM.md](../../CURRICULUM.md).
+Applies `apps/api/src/db/schema.sql` and syncs the curriculum in `apps/api/src/content/` (7 realms, 67 quests) into the database. It's safe to re-run after editing content: rows are upserted by slug and your dev progress is kept.
 
 ## 6. Run the apps
 
@@ -48,7 +48,7 @@ npm run dev:api   # Fastify API on http://localhost:3000
 npm run dev:web   # Vite dev server on http://localhost:5173
 ```
 
-Open `http://localhost:5173` — you'll land on the World Map with levels 1–3 (Wake-up, Name tag, Power math), play a level, and see pass/fail, the rung-0 plain-English error message on a broken submission, and the reward recap on a pass.
+Open `http://localhost:5173` — you'll land on the World Map with seven realms. Each realm is a chain of lessons, coding trials, a guardian quiz and, in later realms, timed drills and mock interviews; the **Journal** shows progress. Only the first quest is open on a fresh database.
 
 ## 7. Run tests
 
@@ -56,8 +56,8 @@ Open `http://localhost:5173` — you'll land on the World Map with levels 1–3 
 npm test
 ```
 
-Runs `apps/api`'s unit tests (reward calculation, stdout evaluation, rung-0 lookup) and the curriculum validation / Docker integration tests (`apps/api/test/curriculum.integration.test.ts`) — the latter requires Docker running and the sandbox image built (steps 3–4); they skip with a clear console warning if either is missing rather than silently reporting false coverage.
+Runs `apps/api`'s unit tests (reward calculation, stdout evaluation, rung-0 lookup, curriculum structure) and the curriculum validation / Docker integration tests (`apps/api/test/curriculum.integration.test.ts`: every reference solution passes, every documented wrong answer fails, every runnable example runs, every output-question key matches real Java output) — the latter requires Docker running and the sandbox image built (steps 3–4); they skip with a clear console warning if either is missing rather than silently reporting false coverage.
 
 ## What this setup does not cover yet
 
-Real authentication (Milestone 6 — every row currently uses a hardcoded dev user, see [DECISIONS.md D10](../../DECISIONS.md)), levels 4+ (need the world-interaction API, not yet designed), the hardened production sandbox (Milestone 4), and AI hints (Milestone 7, rungs 1–4). Hosting/deployment setup is a separate, not-yet-written topic — see [DEPLOYMENT.md](DEPLOYMENT.md).
+Real authentication (Milestone 6 — every row currently uses a hardcoded dev user, see [DECISIONS.md D10](../../DECISIONS.md)), the robot world-interaction API for animated levels beyond the Foundry, the hardened production sandbox (Milestone 4), and AI-generated hints (Milestone 7 — the current rungs 1–3 are authored, see [D11](../../DECISIONS.md)). Hosting/deployment setup is a separate, not-yet-written topic — see [DEPLOYMENT.md](DEPLOYMENT.md).

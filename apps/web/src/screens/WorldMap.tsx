@@ -1,47 +1,82 @@
-import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import type { WorldSummary } from "@atlas/shared-types";
-import { api } from "../api/client.js";
+import { Island, type IslandVariant } from "../components/Art.js";
 
-// design.md §3.3: node states locked/available/in_progress/mastered.
-export function WorldMap(props: { onSelectLevel: (levelId: string) => void }) {
-  const [worlds, setWorlds] = useState<WorldSummary[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+const STATE_TEXT: Record<WorldSummary["state"], string> = {
+  locked: "🔒 Locked",
+  open: "◐ In progress",
+  complete: "★ Complete",
+};
 
-  useEffect(() => {
-    api
-      .getLearningPaths()
-      .then((paths) => api.getWorlds(paths[0].id))
-      .then(setWorlds)
-      .catch((err) => setError(String(err)));
-  }, []);
-
-  if (error) return <p role="alert">Couldn't load the map: {error}</p>;
-  if (!worlds) return <p>Loading map...</p>;
-
-  const stateIcon: Record<string, string> = { locked: "🔒", available: "○", in_progress: "◐", mastered: "★" };
+// The course map (design.md §3.3): every realm in order along one path, so a
+// learner can always see where they are, what comes next, and what it takes
+// to get there (each realm's guardian quiz opens the following realm).
+export function WorldMap(props: { worlds: WorldSummary[]; hud: ReactNode; onSelectWorld: (worldId: string) => void }) {
+  const current = props.worlds.find((w) => w.state === "open");
 
   return (
-    <div>
-      <h1>Project Atlas — The Silent Foundry</h1>
-      {worlds.map((world) => (
-        <div key={world.id}>
-          <h2>{world.name}</h2>
-          <ul>
-            {world.levels.map((level) => (
-              <li key={level.id}>
-                <button
-                  disabled={level.state === "locked"}
-                  onClick={() => props.onSelectLevel(level.id)}
-                  aria-label={`${level.title} — ${level.state}`}
-                >
-                  {stateIcon[level.state]} {level.title}
-                  {level.syllabusTag ? ` (${level.syllabusTag})` : ""}
-                </button>
-              </li>
-            ))}
-          </ul>
+    <div className="map-page">
+      <div className="stars" />
+      <header className="page-header">
+        <div>
+          <h1 className="display">World Map</h1>
+          <p className="muted">
+            One path, one language: Java from your first line of code to interview-ready. Each realm's guardian opens the
+            next.
+          </p>
         </div>
-      ))}
+        {props.hud}
+      </header>
+
+      <ol className="course-map">
+        {props.worlds.map((world, i) => {
+          const done = world.levels.filter((l) => l.state === "mastered" || l.state === "assisted").length;
+          const lessons = world.levels.filter((l) => l.kind === "lesson").length;
+          const trials = world.levels.filter((l) => l.kind === "trial" || l.kind === "mock").length;
+          const locked = world.state === "locked";
+          const next = props.worlds[i + 1];
+          return (
+            <li key={world.id} className={`map-node ${i % 2 ? "right" : "left"} ${world.state}`}>
+              <button
+                className="realm"
+                disabled={locked}
+                onClick={() => props.onSelectWorld(world.id)}
+                aria-label={`Realm ${i + 1}: ${world.name} — ${STATE_TEXT[world.state]}`}
+              >
+                <Island variant={world.theme as IslandVariant} locked={locked} />
+              </button>
+              <div className="map-info card">
+                {current?.id === world.id && <span className="here-badge">You are here</span>}
+                <div className="realm-label-row">
+                  <span className="realm-num">{i + 1}</span>
+                  <div>
+                    <strong>{world.name}</strong>
+                    <small className="muted">{world.subtitle}</small>
+                  </div>
+                </div>
+                <p className="small muted">
+                  {STATE_TEXT[world.state]} · {done}/{world.levels.length} quests · {lessons} lessons, {trials} coding
+                  challenges, 1 guardian quiz
+                </p>
+                <div className="progress-track" aria-hidden="true">
+                  <span style={{ width: `${(done / world.levels.length) * 100}%` }} />
+                </div>
+                {next && (
+                  <p className="small muted map-leads">
+                    Leads to → {next.name}
+                    {locked ? "" : world.state === "complete" ? " (open)" : " (beat the guardian to unlock)"}
+                  </p>
+                )}
+                {!locked && (
+                  <button className="btn-ghost btn-small" onClick={() => props.onSelectWorld(world.id)}>
+                    {world.state === "complete" ? "Revisit" : "Enter realm"} <span aria-hidden="true">→</span>
+                  </button>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }

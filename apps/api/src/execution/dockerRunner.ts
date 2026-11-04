@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 const SANDBOX_IMAGE = process.env.SANDBOX_IMAGE ?? "atlas-java-sandbox";
 const TIMEOUT_SECONDS = 5;
+const MAX_OUTPUT_CHARS = 20_000;
 
 /**
  * Compiles and runs Java submissions inside short-lived, isolated Docker
@@ -23,13 +24,6 @@ const TIMEOUT_SECONDS = 5;
  * even in this non-hardened path.
  */
 
-export interface CompileResult {
-  workDir: string;
-  success: boolean;
-  stderr: string;
-  timedOut: boolean;
-}
-
 export interface RunResult {
   stdout: string;
   stderr: string;
@@ -37,30 +31,48 @@ export interface RunResult {
   timedOut: boolean;
 }
 
+export interface CompileResult {
+  workDir: string;
+  mainClass: string;
+  success: boolean;
+  stderr: string;
+  timedOut: boolean;
+}
+
+// Java requires a public class to live in a file of the same name. Early
+// Foundry levels use `Robot`, later realms `Main`; a submission with no public
+// class falls back to Main. The regex only admits identifier characters, so
+// the name is safe to use as a file name and argv entry.
+export function mainClassName(code: string): string {
+  return /public\s+(?:final\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)/.exec(code)?.[1] ?? "Main";
+}
+
 export async function compileInSandbox(code: string): Promise<CompileResult> {
   const workDir = await mkdtemp(join(tmpdir(), "atlas-submission-"));
-  await writeFile(join(workDir, "Robot.java"), code, "utf-8");
+  const mainClass = mainClassName(code);
+  await writeFile(join(workDir, `${mainClass}.java`), code, "utf-8");
 
   const result = await runContainer({
     workDir,
-    mountMode: "rw", // javac needs to write Robot.class next to the source
-    command: ["timeout", `${TIMEOUT_SECONDS}`, "javac", "/work/Robot.java"],
+    mountMode: "rw", // javac needs to write .class files next to the source
+    command: ["timeout", `${TIMEOUT_SECONDS}`, "javac", `/work/${mainClass}.java`],
     stdin: null,
   });
 
   return {
     workDir,
+    mainClass,
     success: result.exitCode === 0 && !result.timedOut,
     stderr: result.stderr,
     timedOut: result.timedOut,
   };
 }
 
-export async function runInSandbox(workDir: string, stdin: string | null): Promise<RunResult> {
+export async function runInSandbox(compile: CompileResult, stdin: string | null): Promise<RunResult> {
   return runContainer({
-    workDir,
+    workDir: compile.workDir,
     mountMode: "ro",
-    command: ["timeout", `${TIMEOUT_SECONDS}`, "java", "-cp", "/work", "Robot"],
+    command: ["timeout", `${TIMEOUT_SECONDS}`, "java", "-cp", "/work", compile.mainClass],
     stdin,
   });
 }
@@ -100,8 +112,9 @@ function runContainer(opts: ContainerRunOptions): Promise<RunResult> {
     let stdout = "";
     let stderr = "";
 
-    proc.stdout.on("data", (chunk) => { stdout += chunk.toString(); });
-    proc.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
+    // Output is capped so a print-in-a-loop can't balloon memory or the DB row.
+    proc.stdout.on("data", (chunk) => { if (stdout.length < MAX_OUTPUT_CHARS) stdout += chunk.toString(); });
+    proc.stderr.on("data", (chunk) => { if (stderr.length < MAX_OUTPUT_CHARS) stderr += chunk.toString(); });
 
     if (opts.stdin !== null) {
       proc.stdin.write(opts.stdin);
@@ -113,7 +126,12 @@ function runContainer(opts: ContainerRunOptions): Promise<RunResult> {
       // `timeout` (coreutils) exits 124 specifically when it kills the wrapped
       // command for running too long — that's how we distinguish "timed out"
       // from "crashed" without parsing stderr text.
-      resolve({ stdout, stderr, exitCode: code ?? 1, timedOut: code === 124 });
+      resolve({
+        stdout: stdout.slice(0, MAX_OUTPUT_CHARS),
+        stderr: stderr.slice(0, MAX_OUTPUT_CHARS),
+        exitCode: code ?? 1,
+        timedOut: code === 124,
+      });
     });
   });
 }

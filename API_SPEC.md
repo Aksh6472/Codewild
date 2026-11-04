@@ -67,6 +67,22 @@ Proposed contract, not implemented. Base path `/api/v1`. All responses JSON. Aut
 - **Errors:** `429` if the daily cap is hit, with a clear message (not a silent failure).
 - Rung 0 is **not** requested through this endpoint — it's included directly in the `GET /submissions/:id` response, since it's deterministic and free.
 
+## Implemented in the local prototype (no `/api/v1` prefix, no auth yet)
+
+The routes below exist in `apps/api/src/routes/` ([DECISIONS.md D11](DECISIONS.md)). Shapes are the TypeScript types in `packages/shared-types/src/index.ts`, the single source for request and response fields — they aren't repeated here.
+
+| Route | Purpose |
+|---|---|
+| `GET /learning-paths`, `GET /learning-paths/:id/worlds` | Course map: realms with state (`locked` / `open` / `complete`) and their quests (`kind`, `state`). |
+| `GET /levels/:id` | Quest detail: lesson blocks, public questions (no keys), challenge view with hint-ladder state, quiz status. A locked level returns only its briefing. |
+| `POST /questions/:id/answer` | Grades one **lesson** knowledge check. Quiz and mock questions are rejected here — they're graded only as a whole attempt. |
+| `POST /levels/:id/complete` | Completes a lesson once all its checks are answered correctly; a repeat completion records a review. |
+| `POST /levels/:id/attempts` | Grades a whole quiz or mock discussion. 409 `review_required` until the lessons behind a failed attempt's missed questions are re-completed. Explanations are returned only on a pass. |
+| `POST /challenges/:id/hints`, `POST /challenges/:id/solution` | Next authored hint rung / rung-4 walkthrough; 409 when not yet earned. |
+| `POST /playground/run` | Runs a lesson example once in the dev sandbox; no grading, max 4 concurrent runs. |
+| `POST /submissions`, `GET /submissions/:id`, `GET /progress/reward/:submissionId` | As specified above, plus `visibleStderr`, `targetedFeedback`, and code-requirement results in `visibleResults`. Replays return a zero reward. |
+| `GET /dashboard` | Journal: rank, XP, coins, current realm, quiz scores, review queue, next step. |
+
 ## How code submissions reach the execution environment
 
 `POST /submissions` never calls the Code Execution Service directly from the browser. The Backend API is the only caller, over an internal network path (service-to-service auth TBD — shared secret or mTLS, see [SECURITY.md](SECURITY.md)), per [ARCHITECTURE.md](ARCHITECTURE.md) §1 and [DECISIONS.md#d8](DECISIONS.md). The execution result returns to the API, which persists it (`submission_results`) and only then serves the processed, narrative-safe view to the client via `GET /submissions/:id`.

@@ -1,12 +1,18 @@
 import { describe, it, expect } from "vitest";
 import { execSync, spawnSync } from "node:child_process";
 import { evaluateSubmission, type TestCaseSpec } from "../src/execution/evaluateSubmission.js";
+import { compileInSandbox, runInSandbox, cleanupWorkDir } from "../src/execution/dockerRunner.js";
+import { checkRequirements, isAnswerCorrect } from "../src/evaluation.js";
+import { REALMS } from "../src/content/index.js";
+import type { ChallengeDef } from "../src/content/types.js";
 
-// Curriculum validation tests (TESTING.md): the authored reference solution
-// for each of levels 1-3 must pass every visible+hidden test case, and a
-// documented wrong answer must fail. Runs against the REAL Docker sandbox
-// (not mocked, per TESTING.md's "code-execution tests" guidance) — requires
-// Docker running and the atlas-java-sandbox image built (see
+// Curriculum validation tests (TESTING.md), run against the REAL Docker
+// sandbox (not mocked, per TESTING.md's "code-execution tests" guidance):
+//   - every trial's reference solution passes all visible + hidden tests and
+//     its code requirements; every documented wrong answer fails;
+//   - every runnable lesson example compiles and runs cleanly;
+//   - every "what does this print?" answer key matches what Java really prints.
+// Requires Docker running and the atlas-java-sandbox image built (see
 // docs/engineering/DEVELOPMENT_SETUP.md). Skips with a clear message if either
 // prerequisite is missing, rather than silently reporting false coverage.
 //
@@ -31,78 +37,82 @@ if (!dockerReady) {
   );
 }
 
-const level1Pass = [
-  "public class Robot {",
-  "    public static void main(String[] args) {",
-  '        System.out.println("Hello, Foundry!");',
-  "    }",
-  "}",
-].join("\n");
+const TIMEOUT_MS = 90_000;
+const levels = REALMS.flatMap((r) => r.levels);
 
-const level1Tests: TestCaseSpec[] = [
-  { id: "t1", isHidden: false, description: "says hello", input: null, expected: { stdout: "Hello, Foundry!" } },
-];
+function testSpecs(challenge: ChallengeDef): TestCaseSpec[] {
+  return challenge.tests.map((t, i) => ({
+    id: `t${i}`,
+    isHidden: t.hidden ?? false,
+    description: t.description,
+    input: t.stdin !== undefined ? { stdin: t.stdin } : null,
+    expected: t.stdout !== undefined ? { stdout: t.stdout } : { stdoutPattern: t.stdoutPattern },
+  }));
+}
 
-const level3Pass = [
-  "import java.util.Scanner;",
-  "public class Robot {",
-  "    public static void main(String[] args) {",
-  "        Scanner scanner = new Scanner(System.in);",
-  "        int bridgeLength = scanner.nextInt();",
-  "        int batteryPerMeter = 2;",
-  "        int batteryNeeded = bridgeLength * batteryPerMeter;",
-  '        System.out.println("Battery needed: " + batteryNeeded);',
-  "    }",
-  "}",
-].join("\n");
+// Output questions show a fragment of main's body unless they contain a class.
+function asProgram(code: string): string {
+  if (/\bclass\s/.test(code)) return code;
+  const body = code.trimEnd().split("\n").map((l) => `        ${l}`).join("\n");
+  return `import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n${body}\n    }\n}\n`;
+}
 
-// The documented wrong answer: hardcodes the visible case's expected output
-// instead of computing a formula (CURRICULUM.md level 3 mastery requirement).
-const level3Hardcoded = [
-  "import java.util.Scanner;",
-  "public class Robot {",
-  "    public static void main(String[] args) {",
-  "        Scanner scanner = new Scanner(System.in);",
-  "        int bridgeLength = scanner.nextInt();",
-  '        System.out.println("Battery needed: 24");',
-  "    }",
-  "}",
-].join("\n");
+async function runOnce(code: string, stdin: string | null) {
+  const compile = await compileInSandbox(code);
+  try {
+    if (!compile.success) return { ok: false, stdout: "", stderr: compile.stderr };
+    const run = await runInSandbox(compile, stdin);
+    return { ok: run.exitCode === 0 && !run.timedOut, stdout: run.stdout, stderr: run.stderr };
+  } finally {
+    await cleanupWorkDir(compile.workDir);
+  }
+}
 
-const level3Tests: TestCaseSpec[] = [
-  { id: "t1", isHidden: false, description: "12m bridge", input: { stdin: "12" }, expected: { stdout: "Battery needed: 24" } },
-  { id: "t2", isHidden: true, description: "7m bridge (catches hardcoding)", input: { stdin: "7" }, expected: { stdout: "Battery needed: 14" } },
-];
+describe.runIf(dockerReady).concurrent("curriculum validation (real sandbox)", () => {
+  for (const level of levels) {
+    const challenge = level.challenge;
+    if (challenge) {
+      it(`${level.slug}: reference solution passes every test and requirement`, async () => {
+        const outcome = await evaluateSubmission(challenge.solution, testSpecs(challenge));
+        const failures = outcome.results.filter((r) => !r.passed).map((r) => `${r.description}: ${r.actualStdout}${r.actualStderr}`);
+        expect(failures).toEqual([]);
+        expect(checkRequirements(challenge.solution, challenge.requirements ?? []).every((r) => r.passed)).toBe(true);
+      }, TIMEOUT_MS);
 
-describe.runIf(dockerReady)("curriculum validation (real sandbox)", () => {
-  it("level 1 reference solution passes", async () => {
-    const outcome = await evaluateSubmission(level1Pass, level1Tests);
-    expect(outcome.overallStatus).toBe("passed");
-  });
+      (challenge.wrongSolutions ?? []).forEach((wrong, i) => {
+        it(`${level.slug}: documented wrong answer #${i + 1} fails`, async () => {
+          const outcome = await evaluateSubmission(wrong, testSpecs(challenge));
+          const meetsRequirements = checkRequirements(wrong, challenge.requirements ?? []).every((r) => r.passed);
+          expect(outcome.overallStatus === "passed" && meetsRequirements).toBe(false);
+        }, TIMEOUT_MS);
+      });
+    }
 
-  it("level 3 reference solution passes both visible and hidden cases", async () => {
-    const outcome = await evaluateSubmission(level3Pass, level3Tests);
-    expect(outcome.overallStatus).toBe("passed");
-  });
+    (level.blocks ?? []).forEach((block, i) => {
+      if (block.type !== "code" || !block.runnable) return;
+      it(`${level.slug}: example #${i + 1} runs cleanly`, async () => {
+        const code = block.lines.map(([line]) => line).join("\n");
+        const result = await runOnce(code, block.stdin ?? null);
+        expect(result.stderr).toBe("");
+        expect(result.ok).toBe(true);
+      }, TIMEOUT_MS);
+    });
 
-  it("level 3 hardcoded wrong answer fails specifically on the hidden case", async () => {
-    const outcome = await evaluateSubmission(level3Hardcoded, level3Tests);
-    expect(outcome.overallStatus).toBe("failed");
-    const visible = outcome.results.find((r) => !r.isHidden);
-    const hidden = outcome.results.find((r) => r.isHidden);
-    expect(visible?.passed).toBe(true);
-    expect(hidden?.passed).toBe(false);
-  });
+    for (const q of level.questions ?? []) {
+      if (q.kind !== "output" || !q.code) continue;
+      it(`${level.slug}:${q.slug}: answer key matches real output`, async () => {
+        const result = await runOnce(asProgram(q.code!), null);
+        expect(result.stderr).toBe("");
+        expect(isAnswerCorrect("output", q.answer, result.stdout)).toBe(true);
+      }, TIMEOUT_MS);
+    }
+  }
 
   it("an infinite loop is reported as a timeout, not left to hang", async () => {
-    const infinite = [
-      "public class Robot {",
-      "    public static void main(String[] args) {",
-      "        while (true) {}",
-      "    }",
-      "}",
-    ].join("\n");
-    const outcome = await evaluateSubmission(infinite, level1Tests);
+    const infinite = "public class Main {\n    public static void main(String[] args) {\n        while (true) {}\n    }\n}\n";
+    const outcome = await evaluateSubmission(infinite, [
+      { id: "t1", isHidden: false, description: "never finishes", input: null, expected: { stdout: "" } },
+    ]);
     expect(outcome.overallStatus).toBe("timeout");
-  }, 15000);
+  }, TIMEOUT_MS);
 });

@@ -2,8 +2,12 @@ import type { FastifyInstance } from "fastify";
 import { pool } from "../db/pool.js";
 import { DEV_USER_ID } from "../devUser.js";
 import { evaluateSubmission, type TestCaseSpec } from "../execution/evaluateSubmission.js";
-import { rung0Message } from "../hints/rung0.js";
-import { calculateReward, masteredState } from "../reward/reward.js";
+import { rung0Message, WRONG_OUTPUT_MESSAGE } from "../hints/rung0.js";
+import { calculateReward, masteredState, rewardKey } from "../reward/reward.js";
+import { checkRequirements, matchFeedback, type CodeRequirement } from "../evaluation.js";
+import { completeMockIfReady, findPathLevel, grantReward, markConceptMastered, upgradeLevelState } from "../progression.js";
+import { MAX_CODE_CHARS } from "./playground.js";
+import { locked, notFound } from "./levels.js";
 
 // API_SPEC.md: POST /submissions returns immediately with a pending status;
 // the actual compile/run happens asynchronously (ARCHITECTURE.md §3) and the
@@ -11,7 +15,15 @@ import { calculateReward, masteredState } from "../reward/reward.js";
 // a narrative "twist", never returned as a raw list (SECURITY.md/API_SPEC.md).
 export async function submissionsRoutes(app: FastifyInstance) {
   app.post("/submissions", async (req, reply) => {
-    const { challengeId, code } = req.body as { challengeId: string; code: string };
+    const { challengeId, code } = (req.body ?? {}) as { challengeId?: unknown; code?: unknown };
+    if (typeof challengeId !== "string" || typeof code !== "string" || code.length > MAX_CODE_CHARS) {
+      return reply.code(400).send({ error: { code: "bad_request", message: "challengeId and code are required" } });
+    }
+
+    const { rows: [challenge] } = await pool.query(`SELECT level_id FROM challenges WHERE id = $1`, [challengeId]);
+    if (!challenge) return notFound(reply, "Challenge not found");
+    const found = await findPathLevel(pool, DEV_USER_ID, challenge.level_id);
+    if (!found || found.level.state === "locked") return locked(reply);
 
     const { rows: [{ count }] } = await pool.query(
       `SELECT COUNT(*)::int AS count FROM submissions WHERE user_id = $1 AND challenge_id = $2`,
@@ -38,7 +50,9 @@ export async function submissionsRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
 
     const { rows: [submission] } = await pool.query(
-      `SELECT id, status FROM submissions WHERE id = $1 AND user_id = $2`,
+      `SELECT s.id, s.status, s.code, c.requirements, c.feedback
+       FROM submissions s JOIN challenges c ON c.id = s.challenge_id
+       WHERE s.id = $1 AND s.user_id = $2`,
       [id, DEV_USER_ID]
     );
     if (!submission) {
@@ -46,7 +60,15 @@ export async function submissionsRoutes(app: FastifyInstance) {
     }
 
     if (submission.status === "pending") {
-      return { status: "pending", visibleResults: [], visibleStdout: null, hiddenTwist: null, rung0Message: null };
+      return {
+        status: "pending",
+        visibleResults: [],
+        visibleStdout: null,
+        visibleStderr: null,
+        hiddenTwist: null,
+        rung0Message: null,
+        targetedFeedback: null,
+      };
     }
 
     const { rows: resultRows } = await pool.query(
@@ -56,29 +78,42 @@ export async function submissionsRoutes(app: FastifyInstance) {
       [id]
     );
 
-    const visibleResults = resultRows
-      .filter((r) => !r.is_hidden)
-      .map((r) => ({ description: r.description, passed: r.passed }));
+    const requirementResults = checkRequirements(submission.code, submission.requirements as CodeRequirement[]);
+    const visibleResults = [
+      ...resultRows.filter((r) => !r.is_hidden).map((r) => ({ description: r.description, passed: r.passed })),
+      ...requirementResults,
+    ];
 
     const firstVisible = resultRows.find((r) => !r.is_hidden);
     const visibleStdout: string | null = firstVisible?.actual_output?.stdout ?? null;
+    const visibleStderr: string | null = firstVisible?.actual_output?.stderr || null;
 
+    // The twist only makes sense once the visible goal is met ("the gate opened...").
+    const visiblePassed = resultRows.filter((r) => !r.is_hidden).every((r) => r.passed);
     const failedHidden = resultRows.find((r) => r.is_hidden && !r.passed);
-    const hiddenTwist = failedHidden
+    const hiddenTwist = visiblePassed && failedHidden
       ? { triggered: true, narrativeMessage: `The gate opened... but a new case appeared: ${failedHidden.description}` }
       : null;
 
     const firstFailure = resultRows.find((r) => !r.passed);
-    const message = firstFailure
-      ? rung0Message(firstFailure.error_classification, firstFailure.actual_output?.stderr ?? "")
-      : null;
+    const failedRequirement = requirementResults.find((r) => !r.passed);
+    const message = !firstFailure
+      ? (failedRequirement ? `Your output is right, but this trial also asks: ${failedRequirement.description}.` : null)
+      : firstFailure.error_classification === "none"
+        ? (firstFailure.is_hidden ? null : WRONG_OUTPUT_MESSAGE) // hidden misses are explained by hiddenTwist
+        : rung0Message(firstFailure.error_classification, firstFailure.actual_output?.stderr ?? "");
+
+    const targetedFeedback =
+      submission.status === "passed" ? null : matchFeedback(submission.feedback, submission.code, visibleStdout ?? "");
 
     return {
       status: submission.status,
       visibleResults,
       visibleStdout,
+      visibleStderr,
       hiddenTwist,
       rung0Message: message,
+      targetedFeedback,
     };
   });
 }
@@ -100,6 +135,12 @@ async function processSubmission(submissionId: string, challengeId: string, code
 
   const outcome = await evaluateSubmission(code, testCases);
 
+  // Static requirements (e.g. "defines a class that extends Member") are part
+  // of passing: correct output from the wrong technique isn't the lesson.
+  const { rows: [challengeRow] } = await pool.query(`SELECT requirements FROM challenges WHERE id = $1`, [challengeId]);
+  const requirementsMet = checkRequirements(code, challengeRow.requirements as CodeRequirement[]).every((r) => r.passed);
+  const overallStatus = outcome.overallStatus === "passed" && !requirementsMet ? "failed" : outcome.overallStatus;
+
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -118,9 +159,9 @@ async function processSubmission(submissionId: string, challengeId: string, code
       );
     }
 
-    await client.query(`UPDATE submissions SET status = $1 WHERE id = $2`, [outcome.overallStatus, submissionId]);
+    await client.query(`UPDATE submissions SET status = $1 WHERE id = $2`, [overallStatus, submissionId]);
 
-    if (outcome.overallStatus === "passed") {
+    if (overallStatus === "passed") {
       await applyReward(client, submissionId, challengeId);
     }
 
@@ -133,32 +174,30 @@ async function processSubmission(submissionId: string, challengeId: string, code
   }
 }
 
+// Rewards are keyed per level, so only the first pass pays; replays keep the
+// best state (a later clean pass can still upgrade 'assisted' to ★).
 async function applyReward(client: import("pg").PoolClient, submissionId: string, challengeId: string) {
   const { rows: [level] } = await client.query(
-    `SELECT lv.id, lv.concept FROM levels lv JOIN challenges c ON c.level_id = lv.id WHERE c.id = $1`,
+    `SELECT lv.id, lv.concept, lv.kind FROM levels lv JOIN challenges c ON c.level_id = lv.id WHERE c.id = $1`,
     [challengeId]
   );
+  const { rows: [rung4] } = await client.query(
+    `SELECT EXISTS (SELECT 1 FROM hint_usage WHERE user_id = $1 AND challenge_id = $2 AND rung = 4) AS used`,
+    [DEV_USER_ID, challengeId]
+  );
 
-  const usedRung4 = false; // AI hint rungs are not built in this milestone (ROADMAP.md Milestone 7)
+  const usedRung4: boolean = rung4.used;
   const { xp, coins } = calculateReward(usedRung4);
-  const state = masteredState(usedRung4);
 
-  await client.query(
-    `INSERT INTO progress (user_id, level_id, state, best_submission_id, used_rung_4, updated_at)
-     VALUES ($1, $2, $3, $4, $5, now())
-     ON CONFLICT (user_id, level_id) DO UPDATE SET state = $3, best_submission_id = $4, used_rung_4 = $5, updated_at = now()`,
-    [DEV_USER_ID, level.id, state, submissionId, usedRung4]
-  );
+  if (level.kind === "mock") {
+    await completeMockIfReady(client, DEV_USER_ID, level.id);
+  } else {
+    await upgradeLevelState(client, DEV_USER_ID, level.id, masteredState(usedRung4), {
+      bestSubmissionId: submissionId,
+      usedRung4,
+    });
+    await markConceptMastered(client, DEV_USER_ID, level.concept);
+  }
 
-  await client.query(
-    `INSERT INTO concept_mastery (user_id, concept, status) VALUES ($1, $2, 'mastered')
-     ON CONFLICT (user_id, concept) DO UPDATE SET status = 'mastered'`,
-    [DEV_USER_ID, level.concept]
-  );
-
-  await client.query(
-    `INSERT INTO reward_transactions (user_id, submission_id, xp_delta, coins_delta, reason)
-     VALUES ($1, $2, $3, $4, 'level_passed')`,
-    [DEV_USER_ID, submissionId, xp, coins]
-  );
+  await grantReward(client, DEV_USER_ID, rewardKey.trial(level.id), xp, coins, "level_passed", submissionId);
 }

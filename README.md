@@ -41,12 +41,12 @@ Full topic breakdown in [CURRICULUM.md](CURRICULUM.md).
 | Product/design documentation | In progress (this repository) |
 | User validation (15–20 student interviews) | Not started — plan defined in [VALIDATION.md](VALIDATION.md) |
 | UX prototype | Not started |
-| Playable Java Fundamentals prototype (levels 1–3 of 10) | **Working, local dev only** — see [docs/engineering/DEVELOPMENT_SETUP.md](docs/engineering/DEVELOPMENT_SETUP.md) and [DECISIONS.md D10](DECISIONS.md). No auth, no hardened sandbox, levels 4–10 not built. |
-| Secure Java code execution (production-grade) | Not started — a dev-only local Docker execution path exists for levels 1–3 (not hardened, not internet-facing), see [SECURITY.md](SECURITY.md) and [TECH.md](TECH.md) §9 |
+| Playable Java path prototype (7 realms: Fundamentals → OOP → DSA → algorithms → interview prep) | **Working, local dev only** — 67 quests (lessons, coding trials, guardian quizzes, timed drills, mock interviews), progress dashboard and course map. See [docs/engineering/DEVELOPMENT_SETUP.md](docs/engineering/DEVELOPMENT_SETUP.md), [DECISIONS.md D10](DECISIONS.md) and [D11](DECISIONS.md). No auth, no hardened sandbox. |
+| Secure Java code execution (production-grade) | Not started — a dev-only local Docker execution path runs every trial and lesson example (not hardened, not internet-facing), see [SECURITY.md](SECURITY.md) and [TECH.md](TECH.md) §9 |
 | Accounts & progress persistence | Not started (progress persists per-session to a single hardcoded dev user, not real accounts) |
-| AI hints | Not started (deterministic rung-0 error messages are implemented; AI rungs 1–4 are not) |
+| AI hints | Not started — rung-0 error messages plus **authored** rungs 1–3 and a gated rung-4 solution walkthrough are implemented ([D11](DECISIONS.md)); AI-generated rungs are not |
 
-Everything above "Playable Java Fundamentals prototype" is still a plan, not a claim about current functionality — and even the prototype row is explicitly scoped to 3 of the 10 Fundamentals levels, running locally only.
+Everything above "Playable Java Fundamentals prototype" is still a plan, not a claim about current functionality — and even the prototype row runs locally only, for a single hard-coded dev user.
 
 ## Repository structure
 

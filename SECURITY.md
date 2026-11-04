@@ -26,6 +26,8 @@ Item 1–5 apply equally whether the execution environment is a managed service 
 - **Filesystem restrictions:** read-only root filesystem; no access to any other submission's scratch space; no access to the sandbox host's filesystem.
 - **Container/VM escape:** this is the single highest-severity risk in the whole system — a successful escape from student code reaches the infrastructure. Mitigate by using a maintained, security-patched base sandboxing mechanism rather than a hand-rolled chroot/jail, and by keeping the sandbox's trusted surface (what it exposes to the running program) as small as possible — e.g., do not expose the full JDK's reflection/`ProcessBuilder`/file-write capabilities to beginner-level challenges that never need them, if the chosen runtime config allows restricting them (Java's `SecurityManager` is deprecated for removal in modern JDKs, so this needs a current-JDK-appropriate approach — **TBD**, flag during the sandbox spike in [ROADMAP.md](ROADMAP.md) milestone 4).
 
+- **Current dev-only path ([DECISIONS.md D10](DECISIONS.md), [D11](DECISIONS.md)):** `apps/api/src/execution/dockerRunner.ts` runs every trial submission *and* every lesson "Run" (`POST /playground/run`) in a throwaway container: `--network none`, 256 MB memory, 0.5 CPU, 64 pids, read-only root, 5 s wall-clock per phase, output capped at 20,000 characters. Source is at most 20,000 characters and no more than 4 playground runs execute at once. This is **not** the hardened sandbox above and must never be internet-facing.
+
 ## Authentication and authorization
 
 - Google OAuth as primary; email/password fallback hashed with bcrypt/argon2 (never reversible encryption) — see [TECH.md](TECH.md) §7.
