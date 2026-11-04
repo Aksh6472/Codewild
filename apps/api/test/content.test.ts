@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { REALMS } from "../src/content/index.js";
+import { stripComments } from "../src/evaluation.js";
 
 // Structural checks on the authored curriculum (fast, no Docker). The
 // sandbox-backed correctness checks live in curriculum.integration.test.ts.
@@ -56,6 +57,17 @@ describe("curriculum structure", () => {
           if (q.reviewLesson) expect(lessonSlugs.has(q.reviewLesson), `${q.slug} → ${q.reviewLesson}`).toBe(true);
         }
       });
+
+      if (level.challenge) {
+        it("never shows mistake-specific feedback for the reference solution's own code", () => {
+          const source = stripComments(level.challenge!.solution);
+          for (const rule of level.challenge!.feedback ?? []) {
+            if (rule.codePattern && !rule.stdoutPattern) {
+              expect(new RegExp(rule.codePattern).test(source), rule.message).toBe(false);
+            }
+          }
+        });
+      }
 
       if (level.kind === "lesson") {
         it("places every knowledge check in the lesson body exactly once", () => {
