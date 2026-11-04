@@ -46,15 +46,21 @@ export async function loadPathLevels(db: Queryable, userId: string): Promise<Pat
 
   // Rows arrive in chain order, so every prerequisite is resolved before the
   // level that depends on it. A level with no progress row is 'available' only
-  // if it has no prerequisite, or its prerequisite is done.
+  // if it has no prerequisite, or its prerequisite is done. A guardian quiz
+  // additionally needs every quest in its realm done — even if progress
+  // carried over from an older, shorter chain skipped one.
   const stateById = new Map<string, LevelState>();
+  const realmDone = new Map<string, boolean>();
   return rows.map((r) => {
-    let state = r.state as LevelState | null;
-    if (!state || state === "locked" || state === "available") {
+    const stored = r.state as LevelState | null;
+    let state: LevelState = stored ?? "locked";
+    if (!isDone(state)) {
       const prereqDone = !r.prerequisite_level_id || isDone(stateById.get(r.prerequisite_level_id));
-      state = prereqDone ? "available" : "locked";
+      const realmReady = r.kind !== "quiz" || realmDone.get(r.world_id) !== false;
+      state = !(prereqDone && realmReady) ? "locked" : stored === "in_progress" ? "in_progress" : "available";
     }
     stateById.set(r.id, state);
+    if (r.kind !== "quiz") realmDone.set(r.world_id, (realmDone.get(r.world_id) ?? true) && isDone(state));
     return {
       id: r.id,
       worldId: r.world_id,

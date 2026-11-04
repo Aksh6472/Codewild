@@ -69,18 +69,33 @@ export function Robot(props: { size?: number; happy?: boolean }) {
   );
 }
 
-type IslandVariant = "village" | "fortress" | "spires";
+export type IslandVariant = "village" | "fortress" | "spires" | "forge" | "archive" | "labyrinth" | "arena";
+
+// Seven realms share three silhouettes (village, fortress, spires) plus an
+// arena ring; each theme gets its own roof/wall palette so islands read as
+// distinct places without new illustration assets.
+const THEME: Record<IslandVariant, { shape: "village" | "fortress" | "spires" | "arena"; wall: string; roof: string }> = {
+  village: { shape: "village", wall: "#e8d6b0", roof: "#c2553d" },
+  forge: { shape: "village", wall: "#b9a58a", roof: "#5b6475" },
+  spires: { shape: "spires", wall: "#dfe6ee", roof: "#3f7fb5" },
+  fortress: { shape: "fortress", wall: "#e8d6b0", roof: "#8e3fb5" },
+  archive: { shape: "spires", wall: "#efe2c4", roof: "#2f8f83" },
+  labyrinth: { shape: "fortress", wall: "#c9c1dd", roof: "#4b3f9e" },
+  arena: { shape: "arena", wall: "#f0d9a0", roof: "#c2553d" },
+};
 
 // A floating island with a settlement silhouette on top. Locked islands render
 // desaturated with a padlock, so the locked state is never colour-only.
 export function Island(props: { variant: IslandVariant; locked: boolean }) {
+  const theme = THEME[props.variant];
   const grass = props.locked ? "#3a4058" : "#4f8f47";
   const grassDark = props.locked ? "#2c3146" : "#3a6e35";
   const rock = props.locked ? "#262b3d" : "#5a4636";
   const rockDark = props.locked ? "#1b1f2d" : "#3d2f25";
-  const wall = props.locked ? "#40475f" : "#e8d6b0";
-  const roof = props.locked ? "#2b3044" : "#c2553d";
+  const wall = props.locked ? "#40475f" : theme.wall;
+  const roof = props.locked ? "#2b3044" : theme.roof;
   const id = `${props.variant}-${props.locked ? "l" : "u"}`;
+  const shape = theme.shape;
 
   return (
     <svg viewBox="0 0 320 260" aria-hidden="true">
@@ -102,7 +117,7 @@ export function Island(props: { variant: IslandVariant; locked: boolean }) {
           <circle cx={x} cy={124} r="11" fill={grassDark} />
         </g>
       ))}
-      {props.variant === "village" && (
+      {shape === "village" && (
         <g>
           <rect x="110" y="88" width="100" height="52" fill={wall} />
           <path d="M104 92 L160 56 L216 92 Z" fill={roof} />
@@ -122,7 +137,7 @@ export function Island(props: { variant: IslandVariant; locked: boolean }) {
           )}
         </g>
       )}
-      {props.variant === "fortress" && (
+      {shape === "fortress" && (
         <g>
           <rect x="96" y="70" width="128" height="70" fill={wall} />
           {[96, 116, 136, 156, 176, 196, 216].map((x) => (
@@ -136,7 +151,7 @@ export function Island(props: { variant: IslandVariant; locked: boolean }) {
           <path d="M208 54 L224 30 L240 54 Z" fill={roof} />
         </g>
       )}
-      {props.variant === "spires" && (
+      {shape === "spires" && (
         <g>
           <rect x="112" y="80" width="96" height="60" fill={wall} />
           <rect x="128" y="34" width="22" height="106" fill={wall} />
@@ -147,6 +162,18 @@ export function Island(props: { variant: IslandVariant; locked: boolean }) {
           <path d="M94 100 L107 76 L120 100 Z" fill={roof} />
           <rect x="204" y="96" width="18" height="44" fill={wall} />
           <path d="M200 100 L213 76 L226 100 Z" fill={roof} />
+        </g>
+      )}
+      {shape === "arena" && (
+        <g>
+          <ellipse cx="160" cy="118" rx="92" ry="30" fill={wall} />
+          <ellipse cx="160" cy="112" rx="70" ry="20" fill={grassDark} />
+          {[84, 108, 132, 160, 188, 212, 236].map((x) => (
+            <rect key={x} x={x - 5} y="96" width="10" height="34" fill={wall} />
+          ))}
+          <rect x="150" y="56" width="20" height="44" fill={wall} />
+          <path d="M150 58 L170 66 L150 74 Z" fill={roof} />
+          <path d="M120 100 L160 84 L200 100" stroke={roof} strokeWidth="6" fill="none" />
         </g>
       )}
       {props.locked && (

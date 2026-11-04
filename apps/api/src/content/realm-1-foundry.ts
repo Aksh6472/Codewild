@@ -697,7 +697,7 @@ export const foundry: RealmDef = {
       slug: "foundry-shift-clock",
       title: "Shift clock",
       kind: "trial",
-      concept: "operators",
+      concept: "integer-division",
       syllabusTag: "Unit 1: Operators",
       story: "The foundry clock only counts minutes. The night crew wants hours and minutes.",
       minutes: 10,
